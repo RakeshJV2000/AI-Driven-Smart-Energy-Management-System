@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Smart_ML_ChatBot</title>
+        <style>
+            body, html {
+                font-family: "Roboto", sans-serif;
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                display: flex;
+                background-color: #f4f7f6; /* Soft greenish-gray background */
+                color: #2C3E50; /* Dark blue-gray text */
+                overflow: hidden;
+                width: 100%;
+            }
+    
+            #ml-interface, #chat-interface {
+                width: 50%;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: stretch;
+                padding: 20px;
+                box-sizing: border-box;
+            }
+    
+            #ml-interface {
+                background-color: #ECF0F1; /* Light gray background */
+            }
+    
+            #chat-interface {
+                background-color: #A8DADC; /* Soft blue background */
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+    
+            #chat-box, #ml-box {
+                background-color: #ffffff;
+                color: #2C3E50;
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 20px;
+                overflow-y: auto;
+                flex-grow: 1;
+            }
+    
+            #user-input, #ml-input {
+                background-color: #ffffff;
+                color: #2C3E50;
+                height: 40px;
+                border-radius: 10px;
+                border: 1px solid #bdc3c7;
+                padding: 0 10px;
+                width: calc(100% - 20px);
+                margin-bottom: 10px;
+            }
+    
+            button {
+                background-color: #2C3E50;
+                color: #ffffff;
+                border-radius: 10px;
+                height: 40px;
+                border: none;
+                padding: 5px 20px;
+                cursor: pointer;
+                margin-bottom: 10px;
+            }
+    
+            @media (max-width: 768px) {
+                body, html {
+                    flex-direction: column;
+                }
+                #ml-interface, #chat-interface {
+                    width: 100%;
+                    height: 50vh;
+                    padding: 10px; 
+                }
+            }
+        </style>
+    </head>
+<body>
+    <div id="ml-interface">
+        <h1>ML Model</h1>
+        <div id="ml-box">
+            <!-- Results will be displayed here -->
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <input type="file" id="csv-input" accept=".csv" />
+            <br>
+            <button onclick="uploadAndProcessCSV()">Upload and Run Model</button>
+        </div>
+    </div>
+    <script>
+        function sendToChatGPT(mse, mae) {
+    fetch('/send-analysis', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ mse: mse, mae: mae })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            console.log('Generated Question:', data.message);  // Log the question
+            sendMessage(data.message);
+            setTimeout(() => sendMessage(data.message2), 30000);
+        } else {
+            throw new Error('Failed to generate the question.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    });
+}
+    </script>
+    
+    <script>
+        function uploadAndProcessCSV() {
+            var fileInput = document.getElementById('csv-input');
+            var file = fileInput.files[0];
+            if (file) {
+                var formData = new FormData();
+                formData.append("csv", file);
+    
+                fetch('/process-csv', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                
+                    var head = data.result.Head;
+                    var info = data.result.Info;
+                    var describe = data.result.Describe;
+                    var mse = data.result.Mean_Squared_Error;
+                    var mae = data.result.Mean_Absolute_Error;
+                    console.log(mae)
+
+                    // Clear previous content
+                    var mlBox = document.getElementById('ml-box');
+                    mlBox.innerHTML = '';
+
+                    // Head
+                    var headHeading = document.createElement('h2');
+                    headHeading.textContent = 'Data Head:';
+                    var headEle = document.createElement('div');
+                    headEle.innerHTML = head;
+                    mlBox.appendChild(headHeading);
+                    mlBox.appendChild(headEle);
+
+                    // Info
+                    var infoHeading = document.createElement('h2');
+                    infoHeading.textContent = 'Data Info:';
+                    var infoEle = document.createElement('div');
+                    infoEle.innerHTML = info;
+                    mlBox.appendChild(infoHeading);
+                    mlBox.appendChild(infoEle);
+
+                    // Describe
+                    var describeHeading = document.createElement('h2');
+                    describeHeading.textContent = 'Data Description:';
+                    var describeEle = document.createElement('div');
+                    describeEle.innerHTML = describe;
+                    mlBox.appendChild(describeHeading);
+                    mlBox.appendChild(describeEle);
+
+                    // Images with headings
+                    var imagesHeading = document.createElement('h2');
+                    imagesHeading.textContent = 'Visualizations:';
+                    mlBox.appendChild(imagesHeading);
+
+                    var barchartEle = document.createElement('div');
+                    var boxplotEle = document.createElement('div');
+                    var histogramEle = document.createElement('div');
+
+                    barchartEle.innerHTML = `<h3>Bar Chart</h3><img src="static/images/bar_chart.png" alt="Bar Chart" style="max-width:100%;">`;
+                    boxplotEle.innerHTML = `<h3>Boxplot</h3><img src="static/images/boxplot.png" alt="Boxplot" style="max-width:100%;">`;
+                    histogramEle.innerHTML = `<h3>Histogram</h3><img src="static/images/histogram.png" alt="Histogram" style="max-width:100%;">`;
+
+                    mlBox.appendChild(barchartEle);
+                    mlBox.appendChild(boxplotEle);
+                    mlBox.appendChild(histogramEle);
+
+                    // Error Metrics with headings
+
+                    var maeHeading = document.createElement('h2');
+                    maeHeading.textContent = 'Mean Absolute Error:';
+                    var maeEle = document.createElement('div');
+                    maeEle.innerHTML = `<strong style="font-size: large;">${mae}</strong>`;
+
+                    mlBox.appendChild(maeHeading);
+                    mlBox.appendChild(maeEle);
+                    sendToChatGPT(mse, mae)
+                    console.log(sendToChatGPT(mse, mae))
+                    return fetch('/send-whatsapp-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: "You are connected to smart energy system, stay tuned for more updates" })
+        });
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to send WhatsApp message');
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('WhatsApp message sent:', result);
+    })
+    .catch(error => {
+        console.error('Error in the operation:', error);
+    });
+        }
+    }
+    </script>
+
+    
+    <div id="chat-interface">
+        <h1>Energy Bot</h1>
+        <div id="chat-box"></div>
+        <input type="text" id="user-input" placeholder="" autofocus>
+        <button onclick="sendMessage()">Ask away!</button>
+    </div>
+
+    <script>
+        var chatBox = document.getElementById("chat-box");
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        document.getElementById("user-input").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                sendMessage(); // Call sendMessage function when Enter key is pressed
+            }
+        });
+        function sendMessage(inputText) {
+            var userInput = inputText || document.getElementById('user-input').value;
+            if (userInput.trim() === '') return;
+
+            var chatBox = document.getElementById('chat-box');
+            var userMessage = '<p><strong>You:</strong> ' + userInput + '</p>';
+            chatBox.innerHTML += userMessage;
+
+            // Send the user input to the server
+            fetch('/get-response', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: userInput })
+            })
+            .then(response => response.json())
+            .then(data => {
+                var botMessage = '<p><strong>Chatbot:</strong> ' + data.message + '</p>';
+                chatBox.innerHTML += botMessage;
+                scrollToBottom();
+            }).catch(error => {
+        console.error('Error processing the chat message:', error);
+            });
+            // Clear the input field
+            // Clear the input field if this was a user input
+            if (!inputText) {
+                document.getElementById('user-input').value = '';
+            }
+        }
+    </script>
+    
+</body>
+</html>
